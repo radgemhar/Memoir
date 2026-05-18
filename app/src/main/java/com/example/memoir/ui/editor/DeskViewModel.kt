@@ -166,4 +166,9 @@ class DeskViewModel @Inject constructor(
 
     fun canUndo() = undoStack.isNotEmpty()
     fun canRedo() = redoStack.isNotEmpty()
+
+    fun clearHistory() {
+        undoStack.clear()
+        redoStack.clear()
+    }
 }

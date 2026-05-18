@@ -94,6 +94,8 @@ fun DeskScreen(
     val handleSaveState = {
         viewModel.save()
         isUserTyping = false
+        // Clear history so buttons stay hidden until new edits
+        viewModel.clearHistory()
         focusManager.clearFocus()
         keyboardController?.hide()
         Unit
@@ -101,7 +103,7 @@ fun DeskScreen(
 
     val showActions = isUserTyping || viewModel.canUndo() || viewModel.canRedo() || viewModel.isDirty
 
-    val sdf = remember { SimpleDateFormat("MMMM d, yyyy HH:mm", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("MMMM d, yyyy h:mm a", Locale.getDefault()) }
     val formattedDate = remember(viewModel.createdAt) { sdf.format(Date(viewModel.createdAt)) }
 
     BackHandler(onBack = handleBack)
@@ -186,12 +188,25 @@ fun DeskScreen(
                 singleLine = true
             )
 
-            Text(
-                text = formattedDate,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formattedDate,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+
+                Text(
+                    text = "${viewModel.body.length} characters",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
 
             if (!viewModel.isMilestoneMode) {
                 MoodSelector(

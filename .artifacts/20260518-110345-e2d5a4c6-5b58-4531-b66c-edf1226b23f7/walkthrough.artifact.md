@@ -1,6 +1,6 @@
-# Walkthrough - Final Refinements and Performance Fixes
+# Walkthrough - Final Refinements and UI Polishing
 
-I have completed the theme implementation, mood selector, and a fully robust editor experience with optimized keyboard and history handling.
+I have finalized the theme implementation, mood selector, and a fully robust editor experience with optimized keyboard and metadata handling.
 
 ## Changes
 
@@ -21,27 +21,21 @@ I have completed the theme implementation, mood selector, and a fully robust edi
     - **Dynamic Cursor**: Integrated `TextFieldValue` to ensure the typing indicator (cursor) automatically follows text changes during history navigation.
 - **Smart Contextual Actions**:
     - **Undo, Redo, and Check** buttons appear automatically when you focus on a text field or start typing.
-    - Buttons stay visible if there is history to navigate or unsaved changes.
     - Buttons gracefully disable (turn gray) when no action is available.
-- **Enhanced "Check" (Save) Button**:
-    - Clicking the **Check button** now saves your progress and **exits the typing state**.
-    - It clears the text field focus (removes the blinking cursor) and hides the keyboard.
-    - You remain on the same screen, allowing for a distraction-free review of your note.
-- **Minimalist Styling**:
-    - Removed redundant screen titles.
-    - Simplified date/time formatting (removed "at").
-    - Character count and timestamps now use a subtle gray for a distraction-free environment.
+    - Clicking the **Check button** saves progress, exits the typing state, and **immediately hides the buttons** for a clean review mode.
+- **Header Metadata Polishing**:
+    - Moved the **character count** to the top row, right-aligned with the date/time for a balanced header.
+    - Simplified date/time formatting and added **AM/PM** indicators (e.g., `May 18, 2026 2:15 PM`).
+    - Used a unified subtle gray for all metadata to maintain focus on the content.
 - **Keyboard Stability**:
     - Set keyboard mode to `adjustNothing` so the screen doesn't shift or "push up" when typing.
-    - The keyboard now overlays the content smoothly.
 
 ### 4. Stability and Performance
 - **Database Fix**: Fixed a critical crash by correctly migrating the Room database schema to version 5.
 - **UI Responsiveness**: Optimized the main thread by stabilizing database connections and managing navigation bar visibility.
 
 ## Verification Summary
-- **Crash-Free**: Verified entry creation and saving multiple times.
+- **UI Layout**: Confirmed character count and date are correctly aligned in the header.
+- **Time Format**: Verified AM/PM logic in the timestamp.
 - **Smooth History**: Tested multiple undo/redo loops with mixed typing and deletions.
-- **Dynamic Cursor**: Verified that the cursor position updates correctly when using history buttons.
-- **Typing Exit**: Confirmed that clicking the "Check" button correctly clears focus and hides the keyboard.
-- **Visuals**: Confirmed correct theme and logo application across both Light and Dark modes.
+- **Typing Exit**: Confirmed that clicking "Check" clears focus, hides the keyboard, and removes buttons.
