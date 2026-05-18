@@ -36,9 +36,13 @@ class DeskViewModel @Inject constructor(
     var isArchived by mutableStateOf(false)
     var createdAt by mutableStateOf(System.currentTimeMillis())
 
+    var isDirty by mutableStateOf(false)
+
     private var initialContent = ""
-    private val undoStack = Stack<String>()
-    private val redoStack = Stack<String>()
+    private val undoStack = mutableListOf<Pair<String, String>>()
+    private val redoStack = mutableListOf<Pair<String, String>>()
+    private var isUpdatingFromUndoRedo = false
+    private var lastSavedState: Pair<String, String>? = null
 
     fun load(id: String?, isMilestone: Boolean) {
         this.id = id
@@ -64,40 +68,66 @@ class DeskViewModel @Inject constructor(
                     }
                 }
                 initialContent = "$title|$body"
+                lastSavedState = title to body
             }
+        } else {
+            lastSavedState = title to body
         }
     }
 
     fun onTitleChange(newTitle: String) {
-        saveToUndo(title)
-        title = newTitle
+        if (title != newTitle) {
+            if (!isUpdatingFromUndoRedo) {
+                addToUndoStack()
+            }
+            title = newTitle
+            isDirty = true
+        }
     }
 
     fun onBodyChange(newBody: String) {
-        saveToUndo(body)
-        body = newBody
+        if (body != newBody) {
+            if (!isUpdatingFromUndoRedo) {
+                addToUndoStack()
+            }
+            body = newBody
+            isDirty = true
+        }
     }
 
-    private fun saveToUndo(oldValue: String) {
-        if (undoStack.isEmpty() || undoStack.peek() != oldValue) {
-            undoStack.push(oldValue)
-            redoStack.clear()
+    private fun addToUndoStack() {
+        val currentState = title to body
+        // Only add to undo stack if the state is different from what we last saved as a history point
+        if (undoStack.isEmpty() || undoStack.last() != currentState) {
+            undoStack.add(currentState)
+            // Limit stack size to prevent memory issues
+            if (undoStack.size > 50) undoStack.removeAt(0)
         }
+        // ALWAYS clear redo stack when a NEW user action happens
+        redoStack.clear()
     }
 
     fun undo() {
         if (undoStack.isNotEmpty()) {
-            redoStack.push(if (isMilestoneMode) title else body)
-            val prev = undoStack.pop()
-            if (isMilestoneMode) title = prev else body = prev
+            isUpdatingFromUndoRedo = true
+            redoStack.add(title to body)
+            val last = undoStack.removeAt(undoStack.size - 1)
+            title = last.first
+            body = last.second
+            isDirty = true
+            isUpdatingFromUndoRedo = false
         }
     }
 
     fun redo() {
         if (redoStack.isNotEmpty()) {
-            undoStack.push(if (isMilestoneMode) title else body)
-            val next = redoStack.pop()
-            if (isMilestoneMode) title = next else body = next
+            isUpdatingFromUndoRedo = true
+            undoStack.add(title to body)
+            val last = redoStack.removeAt(redoStack.size - 1)
+            title = last.first
+            body = last.second
+            isDirty = true
+            isUpdatingFromUndoRedo = false
         }
     }
 
@@ -130,6 +160,10 @@ class DeskViewModel @Inject constructor(
                 if (id == null) memoirRepository.addMemoir(memoir)
                 else memoirRepository.updateMemoir(memoir)
             }
+            isDirty = false
         }
     }
+
+    fun canUndo() = undoStack.isNotEmpty()
+    fun canRedo() = redoStack.isNotEmpty()
 }

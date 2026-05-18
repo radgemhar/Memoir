@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.example.memoir.data.MemoirTag
@@ -58,7 +61,23 @@ fun DeskScreen(
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     var isUserTyping by remember { mutableStateOf(false) }
+
+    var titleValue by remember { mutableStateOf(TextFieldValue(viewModel.title)) }
+    var bodyValue by remember { mutableStateOf(TextFieldValue(viewModel.body)) }
+
+    LaunchedEffect(viewModel.title) {
+        if (titleValue.text != viewModel.title) {
+            titleValue = titleValue.copy(text = viewModel.title, selection = TextRange(viewModel.title.length))
+        }
+    }
+
+    LaunchedEffect(viewModel.body) {
+        if (bodyValue.text != viewModel.body) {
+            bodyValue = bodyValue.copy(text = viewModel.body, selection = TextRange(viewModel.body.length))
+        }
+    }
 
     LaunchedEffect(id) {
         if (id == null) {
@@ -75,9 +94,12 @@ fun DeskScreen(
     val handleSaveState = {
         viewModel.save()
         isUserTyping = false
+        focusManager.clearFocus()
         keyboardController?.hide()
         Unit
     }
+
+    val showActions = isUserTyping || viewModel.canUndo() || viewModel.canRedo() || viewModel.isDirty
 
     val sdf = remember { SimpleDateFormat("MMMM d, yyyy HH:mm", Locale.getDefault()) }
     val formattedDate = remember(viewModel.createdAt) { sdf.format(Date(viewModel.createdAt)) }
@@ -94,15 +116,36 @@ fun DeskScreen(
                     }
                 },
                 actions = {
-                    if (isUserTyping) {
-                        IconButton(onClick = { viewModel.undo() }) {
-                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
+                    if (showActions) {
+                        IconButton(
+                            onClick = { viewModel.undo() },
+                            enabled = viewModel.canUndo()
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Undo,
+                                contentDescription = "Undo",
+                                tint = if (viewModel.canUndo()) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                            )
                         }
-                        IconButton(onClick = { viewModel.redo() }) {
-                            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo")
+                        IconButton(
+                            onClick = { viewModel.redo() },
+                            enabled = viewModel.canRedo()
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Redo,
+                                contentDescription = "Redo",
+                                tint = if (viewModel.canRedo()) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                            )
                         }
-                        IconButton(onClick = handleSaveState) {
-                            Icon(Icons.Default.Check, contentDescription = "Save State")
+                        IconButton(
+                            onClick = handleSaveState,
+                            enabled = viewModel.isDirty
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Save State",
+                                tint = if (viewModel.isDirty) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                            )
                         }
                     }
                 },
@@ -119,10 +162,13 @@ fun DeskScreen(
                 .padding(16.dp)
         ) {
             TextField(
-                value = viewModel.title,
+                value = titleValue,
                 onValueChange = {
-                    viewModel.onTitleChange(it)
-                    isUserTyping = true
+                    titleValue = it
+                    if (viewModel.title != it.text) {
+                        viewModel.onTitleChange(it.text)
+                        isUserTyping = true
+                    }
                 },
                 placeholder = { Text("Title", style = TextStyle(fontSize = 24.sp)) },
                 modifier = Modifier
@@ -165,10 +211,13 @@ fun DeskScreen(
                 )
 
                 TextField(
-                    value = viewModel.body,
+                    value = bodyValue,
                     onValueChange = {
-                        viewModel.onBodyChange(it)
-                        isUserTyping = true
+                        bodyValue = it
+                        if (viewModel.body != it.text) {
+                            viewModel.onBodyChange(it.text)
+                            isUserTyping = true
+                        }
                     },
                     placeholder = { Text("Write your thoughts...") },
                     modifier = Modifier
