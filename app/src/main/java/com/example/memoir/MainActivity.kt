@@ -35,6 +35,7 @@ import com.example.memoir.ui.navigation.Route
 import com.example.memoir.ui.tasks.MilestonesScreen
 import com.example.memoir.ui.theme.MemoirTheme
 import com.example.memoir.ui.theme.ThemeViewModel
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.AndroidEntryPoint
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,139 +53,211 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = backStack.lastOrNull()
                 var showSettings by remember { mutableStateOf(false) }
 
-                Scaffold(
+                NavDisplay(
+                    backStack = backStack,
                     modifier = Modifier.fillMaxSize(),
-                    topBar = {
-                        if (currentRoute !is Route.Desk) {
-                            TopAppBar(
-                                title = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            painter = painterResource(
-                                                id = if (isDarkMode) R.drawable.logo_dark else R.drawable.logo_light
-                                            ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(32.dp),
-                                            tint = Color.Unspecified
-                                        )
-                                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                                        Text(
-                                            text = "Memoir",
-                                            style = MaterialTheme.typography.headlineLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                },
-                                actions = {
-                                    androidx.compose.foundation.layout.Box {
-                                        IconButton(onClick = { showSettings = true }) {
-                                            Icon(Icons.Default.Settings, contentDescription = "Settings")
-                                        }
-                                        DropdownMenu(
-                                            expanded = showSettings,
-                                            onDismissRequest = { showSettings = false }
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = { Text(if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode") },
-                                                onClick = {
-                                                    themeViewModel.setDarkMode(!isDarkMode)
-                                                    showSettings = false
-                                                },
-                                                leadingIcon = {
+                    onBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) },
+                    entryDecorators = listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator()
+                    ),
+                    entryProvider = { key ->
+                        when (key) {
+                            is Route.Memoirs -> NavEntry(key) {
+                                Scaffold(
+                                    topBar = {
+                                        TopAppBar(
+                                            title = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Icon(
-                                                        if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                                        contentDescription = null
+                                                        painter = painterResource(
+                                                            id = if (isDarkMode) R.drawable.logo_dark else R.drawable.logo_light
+                                                        ),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(32.dp),
+                                                        tint = Color.Unspecified
+                                                    )
+                                                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                                                    Text(
+                                                        text = "Memoir",
+                                                        style = MaterialTheme.typography.headlineLarge,
+                                                        color = MaterialTheme.colorScheme.primary
                                                     )
                                                 }
+                                            },
+                                            actions = {
+                                                androidx.compose.foundation.layout.Box {
+                                                    IconButton(onClick = { showSettings = true }) {
+                                                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                                                    }
+                                                    DropdownMenu(
+                                                        expanded = showSettings,
+                                                        onDismissRequest = { showSettings = false }
+                                                    ) {
+                                                        DropdownMenuItem(
+                                                            text = { Text(if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode") },
+                                                            onClick = {
+                                                                themeViewModel.setDarkMode(!isDarkMode)
+                                                                showSettings = false
+                                                            },
+                                                            leadingIcon = {
+                                                                Icon(
+                                                                    if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                                                    contentDescription = null
+                                                                )
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            colors = TopAppBarDefaults.topAppBarColors(
+                                                containerColor = MaterialTheme.colorScheme.background
+                                            )
+                                        )
+                                    },
+                                    bottomBar = {
+                                        NavigationBar {
+                                            NavigationBarItem(
+                                                selected = true,
+                                                onClick = { },
+                                                icon = { Icon(Icons.Default.AutoStories, contentDescription = null) },
+                                                label = { Text("Chronicle") }
+                                            )
+                                            NavigationBarItem(
+                                                selected = false,
+                                                onClick = { 
+                                                    backStack.clear()
+                                                    backStack.add(Route.Milestones)
+                                                },
+                                                icon = { Icon(Icons.Default.Flag, contentDescription = null) },
+                                                label = { Text("Milestones") }
                                             )
                                         }
+                                    },
+                                    floatingActionButton = {
+                                        FloatingActionButton(
+                                            onClick = {
+                                                backStack.add(Route.Desk(id = null, isMilestone = false))
+                                            },
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        ) {
+                                            Icon(Icons.Default.Add, contentDescription = "Add to Chronicle")
+                                        }
                                     }
-                                },
-                                colors = TopAppBarDefaults.topAppBarColors(
-                                    containerColor = MaterialTheme.colorScheme.background
-                                )
-                            )
-                        }
-                    },
-                    bottomBar = {
-                        NavigationBar {
-                            NavigationBarItem(
-                                selected = currentRoute is Route.Memoirs,
-                                onClick = { 
-                                    if (currentRoute !is Route.Memoirs) {
-                                        backStack.clear()
-                                        backStack.add(Route.Memoirs)
-                                    }
-                                },
-                                icon = { Icon(Icons.Default.AutoStories, contentDescription = null) },
-                                label = { Text("Chronicle") }
-                            )
-                            NavigationBarItem(
-                                selected = currentRoute is Route.Milestones,
-                                onClick = { 
-                                    if (currentRoute !is Route.Milestones) {
-                                        backStack.clear()
-                                        backStack.add(Route.Milestones)
-                                    }
-                                },
-                                icon = { Icon(Icons.Default.Flag, contentDescription = null) },
-                                label = { Text("Milestones") }
-                            )
-                        }
-                    },
-                    floatingActionButton = {
-                        if (currentRoute !is Route.Desk) {
-                            FloatingActionButton(
-                                onClick = {
-                                    val isMilestone = currentRoute is Route.Milestones
-                                    backStack.add(Route.Desk(id = null, isMilestone = isMilestone))
-                                },
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add to Chronicle")
-                            }
-                        }
-                    }
-                ) { innerPadding ->
-                    NavDisplay(
-                        backStack = backStack,
-                        modifier = Modifier.padding(innerPadding).fillMaxSize(),
-                        onBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) },
-                        entryDecorators = listOf(
-                            rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator()
-                        ),
-                        entryProvider = { key ->
-                            when (key) {
-                                is Route.Memoirs -> NavEntry(key) {
+                                ) { innerPadding ->
                                     ChronicleScreen(
                                         viewModel = viewModel(),
                                         onNavigateToDesk = { id ->
                                             backStack.add(Route.Desk(id = id, isMilestone = false))
-                                        }
+                                        },
+                                        modifier = Modifier.padding(innerPadding)
                                     )
                                 }
-                                is Route.Milestones -> NavEntry(key) {
+                            }
+                            is Route.Milestones -> NavEntry(key) {
+                                Scaffold(
+                                    topBar = {
+                                        TopAppBar(
+                                            title = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        painter = painterResource(
+                                                            id = if (isDarkMode) R.drawable.logo_dark else R.drawable.logo_light
+                                                        ),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(32.dp),
+                                                        tint = Color.Unspecified
+                                                    )
+                                                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                                                    Text(
+                                                        text = "Memoir",
+                                                        style = MaterialTheme.typography.headlineLarge,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            },
+                                            actions = {
+                                                androidx.compose.foundation.layout.Box {
+                                                    IconButton(onClick = { showSettings = true }) {
+                                                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                                                    }
+                                                    DropdownMenu(
+                                                        expanded = showSettings,
+                                                        onDismissRequest = { showSettings = false }
+                                                    ) {
+                                                        DropdownMenuItem(
+                                                            text = { Text(if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode") },
+                                                            onClick = {
+                                                                themeViewModel.setDarkMode(!isDarkMode)
+                                                                showSettings = false
+                                                            },
+                                                            leadingIcon = {
+                                                                Icon(
+                                                                    if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                                                    contentDescription = null
+                                                                )
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            colors = TopAppBarDefaults.topAppBarColors(
+                                                containerColor = MaterialTheme.colorScheme.background
+                                            )
+                                        )
+                                    },
+                                    bottomBar = {
+                                        NavigationBar {
+                                            NavigationBarItem(
+                                                selected = false,
+                                                onClick = { 
+                                                    backStack.clear()
+                                                    backStack.add(Route.Memoirs)
+                                                },
+                                                icon = { Icon(Icons.Default.AutoStories, contentDescription = null) },
+                                                label = { Text("Chronicle") }
+                                            )
+                                            NavigationBarItem(
+                                                selected = true,
+                                                onClick = { },
+                                                icon = { Icon(Icons.Default.Flag, contentDescription = null) },
+                                                label = { Text("Milestones") }
+                                            )
+                                        }
+                                    },
+                                    floatingActionButton = {
+                                        FloatingActionButton(
+                                            onClick = {
+                                                backStack.add(Route.Desk(id = null, isMilestone = true))
+                                            },
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        ) {
+                                            Icon(Icons.Default.Add, contentDescription = "Add Milestone")
+                                        }
+                                    }
+                                ) { innerPadding ->
                                     MilestonesScreen(
                                         viewModel = viewModel(),
                                         onNavigateToDesk = { id, isMilestone ->
                                             backStack.add(Route.Desk(id = id, isMilestone = isMilestone))
-                                        }
-                                    )
-                                }
-                                is Route.Desk -> NavEntry(key) {
-                                    DeskScreen(
-                                        id = key.id,
-                                        isMilestone = key.isMilestone,
-                                        viewModel = viewModel(),
-                                        onBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
+                                        },
+                                        modifier = Modifier.padding(innerPadding)
                                     )
                                 }
                             }
+                            is Route.Desk -> NavEntry(key) {
+                                DeskScreen(
+                                    id = key.id,
+                                    isMilestone = key.isMilestone,
+                                    viewModel = viewModel(),
+                                    onBack = { if (backStack.size > 1) backStack.removeAt(backStack.size - 1) }
+                                )
+                            }
                         }
-                    )
-                }
+                    }
+                )
             }
         }
     }

@@ -29,14 +29,15 @@ import java.util.*
 @Composable
 fun MilestonesScreen(
     viewModel: MilestonesViewModel,
-    onNavigateToDesk: (String?, Boolean) -> Unit
+    onNavigateToDesk: (String?, Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val milestones by viewModel.milestones.collectAsState()
     val currentFilter by viewModel.filter.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val context = LocalContext.current
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         val focusRequester = remember { FocusRequester() }
 
         TextField(

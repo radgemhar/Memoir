@@ -37,7 +37,8 @@ import java.util.*
 @Composable
 fun ChronicleScreen(
     viewModel: ChronicleViewModel,
-    onNavigateToDesk: (String?) -> Unit
+    onNavigateToDesk: (String?) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val memoirs by viewModel.memoirs.collectAsState()
     val currentFilter by viewModel.filter.collectAsState()
@@ -46,7 +47,7 @@ fun ChronicleScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         val focusRequester = remember { FocusRequester() }
         
         TextField(

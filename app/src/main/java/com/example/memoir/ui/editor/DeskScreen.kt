@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.example.memoir.data.MemoirTag
 import com.example.memoir.ui.theme.*
@@ -56,6 +58,7 @@ fun DeskScreen(
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var isUserTyping by remember { mutableStateOf(false) }
 
     LaunchedEffect(id) {
         if (id == null) {
@@ -69,7 +72,14 @@ fun DeskScreen(
         onBack()
     }
 
-    val sdf = remember { SimpleDateFormat("MMMM d, yyyy 'at' HH:mm", Locale.getDefault()) }
+    val handleSaveState = {
+        viewModel.save()
+        isUserTyping = false
+        keyboardController?.hide()
+        Unit
+    }
+
+    val sdf = remember { SimpleDateFormat("MMMM d, yyyy HH:mm", Locale.getDefault()) }
     val formattedDate = remember(viewModel.createdAt) { sdf.format(Date(viewModel.createdAt)) }
 
     BackHandler(onBack = handleBack)
@@ -77,18 +87,23 @@ fun DeskScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (id == null) "New Entry" else "The Desk") },
+                title = { },
                 navigationIcon = {
                     IconButton(onClick = handleBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.undo() }) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
-                    }
-                    IconButton(onClick = { viewModel.redo() }) {
-                        Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo")
+                    if (isUserTyping) {
+                        IconButton(onClick = { viewModel.undo() }) {
+                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
+                        }
+                        IconButton(onClick = { viewModel.redo() }) {
+                            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo")
+                        }
+                        IconButton(onClick = handleSaveState) {
+                            Icon(Icons.Default.Check, contentDescription = "Save State")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -105,11 +120,15 @@ fun DeskScreen(
         ) {
             TextField(
                 value = viewModel.title,
-                onValueChange = viewModel::onTitleChange,
+                onValueChange = {
+                    viewModel.onTitleChange(it)
+                    isUserTyping = true
+                },
                 placeholder = { Text("Title", style = TextStyle(fontSize = 24.sp)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(focusRequester),
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { if (it.isFocused) isUserTyping = true },
                 textStyle = MaterialTheme.typography.headlineMedium,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
@@ -124,7 +143,7 @@ fun DeskScreen(
             Text(
                 text = formattedDate,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
@@ -147,11 +166,15 @@ fun DeskScreen(
 
                 TextField(
                     value = viewModel.body,
-                    onValueChange = viewModel::onBodyChange,
+                    onValueChange = {
+                        viewModel.onBodyChange(it)
+                        isUserTyping = true
+                    },
                     placeholder = { Text("Write your thoughts...") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .weight(1f)
+                        .onFocusChanged { if (it.isFocused) isUserTyping = true },
                     textStyle = MaterialTheme.typography.bodyLarge,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -166,7 +189,7 @@ fun DeskScreen(
                     text = "${viewModel.body.length} characters",
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.align(Alignment.End).padding(8.dp),
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             } else {
                 Spacer(modifier = Modifier.weight(1f))
