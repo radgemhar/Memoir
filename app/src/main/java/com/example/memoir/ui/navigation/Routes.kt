@@ -19,6 +19,9 @@ sealed interface Route : NavKey {
 
     @Serializable
     data object RecentlyDeleted : Route
+
+    @Serializable
+    data object Folders : Route
     
     @Serializable
     data class Desk(val id: String? = null, val isMilestone: Boolean = false) : Route

@@ -23,8 +23,7 @@ class ChronicleViewModel @Inject constructor(
     private val folderRepository: MemoirFolderRepository
 ) : ViewModel() {
 
-    private val _selectedFolder = MutableStateFlow(DEFAULT_FOLDER_NAME)
-    val selectedFolder: StateFlow<String> = _selectedFolder
+    val selectedFolder: StateFlow<String> = folderRepository.selectedFolder
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -41,7 +40,7 @@ class ChronicleViewModel @Inject constructor(
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val memoirs: StateFlow<List<Memoir>> = combine(
-        _selectedFolder,
+        selectedFolder,
         _searchQuery,
         _refreshRequests
     ) { selectedFolder, query, _ ->
@@ -66,7 +65,7 @@ class ChronicleViewModel @Inject constructor(
     }
 
     fun setSelectedFolder(folderName: String) {
-        _selectedFolder.value = folderName
+        folderRepository.setSelectedFolder(folderName)
     }
 
     fun setSearchQuery(query: String) {
@@ -77,7 +76,7 @@ class ChronicleViewModel @Inject constructor(
         viewModelScope.launch {
             folderRepository.addFolder(name)
             if (name.trim().isNotBlank()) {
-                _selectedFolder.value = name.trim()
+                folderRepository.setSelectedFolder(name.trim())
             }
         }
     }

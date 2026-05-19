@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,11 +49,22 @@ fun MilestonesScreen(
         }
     }
 
+    val pullToRefreshState = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
             viewModel.refresh()
             isRefreshing = true
+        },
+        state = pullToRefreshState,
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter),
+                color = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         },
         modifier = modifier.fillMaxSize()
     ) {
@@ -96,16 +109,33 @@ fun MilestonesScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(milestones, key = { it.id }) { milestone ->
-                MilestoneCard(
-                    milestone = milestone,
-                    onToggle = { viewModel.toggleMilestone(milestone) },
-                    onClick = { onNavigateToDesk(milestone.id, true) },
-                    onDelete = { 
-                        viewModel.deleteMilestone(milestone)
-                        Toast.makeText(context, "Milestone removed", Toast.LENGTH_SHORT).show()
+            if (milestones.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillParentMaxHeight()
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No milestones found",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
-                )
+                }
+            } else {
+                items(milestones, key = { it.id }) { milestone ->
+                    MilestoneCard(
+                        milestone = milestone,
+                        onToggle = { viewModel.toggleMilestone(milestone) },
+                        onClick = { onNavigateToDesk(milestone.id, true) },
+                        onDelete = { 
+                            viewModel.deleteMilestone(milestone)
+                            Toast.makeText(context, "Milestone removed", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
             }
         }
         }

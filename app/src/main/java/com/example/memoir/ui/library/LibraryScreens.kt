@@ -9,14 +9,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +30,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,22 +63,61 @@ fun ArchiveScreen(
     modifier: Modifier = Modifier
 ) {
     val memoirs by viewModel.memoirs.collectAsState()
+    var memoirToDelete by remember { mutableStateOf<Memoir?>(null) }
+
     RefreshableLibraryList(
         items = memoirs,
         emptyText = "Archive is empty",
         modifier = modifier,
         actions = { memoir ->
-            OutlinedButton(onClick = { viewModel.restore(memoir) }) {
-                Icon(Icons.Default.Restore, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Restore")
+            Button(
+                onClick = { viewModel.restore(memoir) },
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Restore", style = MaterialTheme.typography.labelLarge)
             }
-            TextButton(onClick = { viewModel.delete(memoir) }) {
-                Text("Delete")
+            
+            OutlinedButton(
+                onClick = { memoirToDelete = memoir },
+                shape = RoundedCornerShape(8.dp),
+                border = ButtonDefaults.outlinedButtonBorder.copy(width = 0.5.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Delete", style = MaterialTheme.typography.labelLarge)
             }
         },
         onOpenMemoir = onOpenMemoir
     )
+
+    if (memoirToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { memoirToDelete = null },
+            title = { Text("Discard Memoir") },
+            text = { Text("Are you sure you want to move this memoir to recently deleted?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        memoirToDelete?.let { viewModel.delete(it) }
+                        memoirToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Discard")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { memoirToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,6 +127,9 @@ fun RecentlyDeletedScreen(
     modifier: Modifier = Modifier
 ) {
     val memoirs by viewModel.memoirs.collectAsState()
+    var memoirToDeletePermanently by remember { mutableStateOf<Memoir?>(null) }
+    var showEmptyAllDialog by remember { mutableStateOf(false) }
+
     Column(modifier = modifier.fillMaxSize()) {
         if (memoirs.isNotEmpty()) {
             Row(
@@ -88,10 +138,13 @@ fun RecentlyDeletedScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = viewModel::emptyAll) {
+                TextButton(
+                    onClick = { showEmptyAllDialog = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
                     Icon(Icons.Default.DeleteForever, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Delete all")
+                    Text("Empty all")
                 }
             }
         }
@@ -107,16 +160,77 @@ fun RecentlyDeletedScreen(
                 "$daysLeft days left"
             },
             actions = { memoir ->
-                OutlinedButton(onClick = { viewModel.restore(memoir) }) {
-                    Icon(Icons.Default.Restore, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Restore")
+                Button(
+                    onClick = { viewModel.restore(memoir) },
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Restore", style = MaterialTheme.typography.labelLarge)
                 }
-                TextButton(onClick = { viewModel.deletePermanently(memoir) }) {
-                    Text("Delete forever")
+                
+                OutlinedButton(
+                    onClick = { memoirToDeletePermanently = memoir },
+                    shape = RoundedCornerShape(8.dp),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 0.5.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Delete forever", style = MaterialTheme.typography.labelLarge)
                 }
             },
             onOpenMemoir = {}
+        )
+    }
+
+    if (memoirToDeletePermanently != null) {
+        AlertDialog(
+            onDismissRequest = { memoirToDeletePermanently = null },
+            title = { Text("Delete Permanently") },
+            text = { Text("This memoir will be gone forever. This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        memoirToDeletePermanently?.let { viewModel.deletePermanently(it) }
+                        memoirToDeletePermanently = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete Forever")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { memoirToDeletePermanently = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showEmptyAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showEmptyAllDialog = false },
+            title = { Text("Empty Recently Deleted") },
+            text = { Text("Clear all ${memoirs.size} items? This cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.emptyAll()
+                        showEmptyAllDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Empty All")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEmptyAllDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
@@ -140,13 +254,29 @@ private fun RefreshableLibraryList(
         }
     }
 
+    val pullToRefreshState = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = { isRefreshing = true },
+        state = pullToRefreshState,
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter),
+                color = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        },
         modifier = modifier.fillMaxSize()
     ) {
         if (items.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()), 
+                contentAlignment = Alignment.Center
+            ) {
                 Text(emptyText, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {

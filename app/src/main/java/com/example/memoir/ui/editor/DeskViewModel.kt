@@ -13,7 +13,6 @@ import com.example.memoir.data.Milestone
 import com.example.memoir.data.MilestoneRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import java.util.Stack
 import javax.inject.Inject
 
 @HiltViewModel
@@ -107,13 +106,10 @@ class DeskViewModel @Inject constructor(
 
     private fun addToUndoStack() {
         val currentState = title to body
-        // Only add to undo stack if the state is different from what we last saved as a history point
         if (undoStack.isEmpty() || undoStack.last() != currentState) {
             undoStack.add(currentState)
-            // Limit stack size to prevent memory issues
             if (undoStack.size > 50) undoStack.removeAt(0)
         }
-        // ALWAYS clear redo stack when a NEW user action happens
         redoStack.clear()
     }
 
@@ -144,10 +140,16 @@ class DeskViewModel @Inject constructor(
     fun save() {
         if (title.isBlank() && body.isBlank()) return
         
+        val isInsert = (id == null)
+        val activeId = id ?: java.util.UUID.randomUUID().toString()
+        if (id == null) {
+            id = activeId
+        }
+        
         viewModelScope.launch {
             if (isMilestoneMode) {
                 val milestone = Milestone(
-                    id = id ?: java.util.UUID.randomUUID().toString(),
+                    id = activeId,
                     title = title,
                     isCompleted = false,
                     parentId = null,
@@ -156,7 +158,7 @@ class DeskViewModel @Inject constructor(
                 milestoneRepository.addMilestone(milestone)
             } else {
                 val memoir = Memoir(
-                    id = id ?: java.util.UUID.randomUUID().toString(),
+                    id = activeId,
                     title = title,
                     body = body,
                     tag = tag,
@@ -168,8 +170,11 @@ class DeskViewModel @Inject constructor(
                     createdAt = createdAt,
                     lastModified = System.currentTimeMillis()
                 )
-                if (id == null) memoirRepository.addMemoir(memoir)
-                else memoirRepository.updateMemoir(memoir)
+                if (isInsert) {
+                    memoirRepository.addMemoir(memoir)
+                } else {
+                    memoirRepository.updateMemoir(memoir)
+                }
             }
             isDirty = false
         }

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -66,6 +67,7 @@ import com.example.memoir.ui.library.ArchiveScreen
 import com.example.memoir.ui.library.RecentlyDeletedScreen
 import com.example.memoir.ui.navigation.Route
 import com.example.memoir.ui.settings.SettingsScreen
+import com.example.memoir.ui.folders.FoldersScreen
 import com.example.memoir.ui.tasks.MilestonesScreen
 import com.example.memoir.ui.theme.MemoirTheme
 import com.example.memoir.ui.theme.ThemeViewModel
@@ -177,7 +179,21 @@ class MainActivity : ComponentActivity() {
                                         MemoirTopBar(
                                             title = "Memoir",
                                             isDarkMode = isDarkMode,
-                                            showLogo = true
+                                            showLogo = true,
+                                            actions = {
+                                                IconButton(
+                                                    onClick = {
+                                                        navigationMotion = NavigationMotion.Slide
+                                                        backStack.add(Route.Folders)
+                                                    }
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Folder,
+                                                        contentDescription = "Manage Folders",
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
                                         )
                                     },
                                     bottomBar = {
@@ -362,6 +378,33 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            is Route.Folders -> NavEntry(key, metadata = key.motionMetadata()) {
+                                Scaffold(
+                                    topBar = {
+                                        MemoirTopBar(
+                                            title = "Folders",
+                                            isDarkMode = isDarkMode,
+                                            navigationIcon = {
+                                                IconButton(onClick = popBack) {
+                                                    Icon(
+                                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                                        contentDescription = "Back"
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
+                                ) { innerPadding ->
+                                    FoldersScreen(
+                                        viewModel = viewModel(),
+                                        onFolderClick = { _ ->
+                                            popBack()
+                                        },
+                                        modifier = Modifier.padding(innerPadding)
+                                    )
+                                }
+                            }
+
                             is Route.Desk -> NavEntry(key, metadata = key.motionMetadata()) {
                                 DeskScreen(
                                     id = key.id,
@@ -398,6 +441,7 @@ private val Route.motionOrder: Int
         is Route.Memoirs -> 0
         is Route.Milestones -> 1
         is Route.Settings -> 2
+        is Route.Folders -> 3
         is Route.Archive -> 3
         is Route.RecentlyDeleted -> 3
         is Route.Desk -> 4
@@ -458,7 +502,8 @@ private fun MemoirTopBar(
     title: String,
     isDarkMode: Boolean,
     showLogo: Boolean = false,
-    navigationIcon: @Composable () -> Unit = {}
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -482,6 +527,7 @@ private fun MemoirTopBar(
             }
         },
         navigationIcon = navigationIcon,
+        actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background
         )

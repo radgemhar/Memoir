@@ -16,6 +16,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import com.example.memoir.ui.editor.parseRichText
+import com.example.memoir.ui.editor.stripImageTags
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,11 +65,22 @@ fun ChronicleScreen(
         }
     }
 
+    val pullToRefreshState = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
             viewModel.refresh()
             isRefreshing = true
+        },
+        state = pullToRefreshState,
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter),
+                color = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         },
         modifier = modifier.fillMaxSize()
     ) {
@@ -107,10 +124,17 @@ fun ChronicleScreen(
 
         Box(modifier = Modifier.weight(1f)) {
             if (memoirs.isEmpty()) {
-                EmptyChronicle(
-                    isRecall = searchQuery.isNotBlank(),
-                    modifier = Modifier.fillMaxSize()
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    EmptyChronicle(
+                        isRecall = searchQuery.isNotBlank(),
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -269,8 +293,6 @@ fun MemoirCard(
     modifier: Modifier = Modifier
 ) {
     val highlightColor = Color(memoir.highlightColor)
-
-    val isNew = System.currentTimeMillis() - memoir.createdAt < 24 * 60 * 60 * 1000
     val sdf = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
     val formattedDate = remember(memoir.createdAt) { sdf.format(Date(memoir.createdAt)) }
 
@@ -329,7 +351,7 @@ fun MemoirCard(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         modifier = Modifier.weight(1f),
@@ -342,15 +364,6 @@ fun MemoirCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (isNew) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                            )
-                        }
                     }
                     
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -377,7 +390,8 @@ fun MemoirCard(
                             ) {
                                 if (folders.isNotEmpty()) {
                                     DropdownMenuItem(
-                                        text = { Text("Move to folder") }, colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface, leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                                        text = { Text("Move to folder") }, 
+                                        colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface, leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant),
                                         onClick = {
                                             showMenu = false
                                             showFolderDialog = true
@@ -386,18 +400,20 @@ fun MemoirCard(
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text("Archive") }, colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface, leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant),
-                                    onClick = { 
+                                    text = { Text("Archive") }, 
+                                    colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface, leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                                    onClick = {
+                                        showMenu = false
                                         onPreserve()
-                                        showMenu = false 
                                     },
                                     leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Delete") }, colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface, leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant),
-                                    onClick = { 
+                                    text = { Text("Delete") }, 
+                                    colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.error, leadingIconColor = MaterialTheme.colorScheme.error),
+                                    onClick = {
+                                        showMenu = false
                                         onDiscard()
-                                        showMenu = false 
                                     },
                                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
                                 )
@@ -405,19 +421,19 @@ fun MemoirCard(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
                 Text(
-                    text = memoir.body,
+                    text = parseRichText(stripImageTags(memoir.body)),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

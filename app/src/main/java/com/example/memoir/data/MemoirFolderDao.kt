@@ -13,4 +13,16 @@ interface MemoirFolderDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertFolder(folder: MemoirFolder)
+
+    @Query("DELETE FROM memoir_folders WHERE name = :name")
+    suspend fun deleteFolder(name: String)
+
+    @Query("UPDATE memoir_folders SET name = :newName WHERE name = :oldName")
+    suspend fun renameFolder(oldName: String, newName: String)
+
+    @Query("UPDATE memoirs SET deletedAt = :deletedAt, lastModified = :deletedAt, isArchived = 0, folderName = 'All' WHERE folderName = :folderName AND deletedAt IS NULL")
+    suspend fun softDeleteMemoirsInFolder(folderName: String, deletedAt: Long)
+
+    @Query("UPDATE memoirs SET folderName = :newName WHERE folderName = :oldName")
+    suspend fun renameMemoirsFolder(oldName: String, newName: String)
 }
