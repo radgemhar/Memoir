@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.memoir.data.DEFAULT_HIGHLIGHT_COLOR
 import com.example.memoir.data.Memoir
 import com.example.memoir.data.MemoirRepository
 import com.example.memoir.data.MemoirTag
@@ -30,6 +31,7 @@ class DeskViewModel @Inject constructor(
     var title by mutableStateOf("")
     var body by mutableStateOf("")
     var tag by mutableStateOf(MemoirTag.PLAIN)
+    var highlightColor by mutableStateOf(DEFAULT_HIGHLIGHT_COLOR)
     var moodEmoji by mutableStateOf<String?>(null)
     var moodLabel by mutableStateOf<String?>(null)
     var isPinned by mutableStateOf(false)
@@ -60,6 +62,7 @@ class DeskViewModel @Inject constructor(
                         title = memoir.title
                         body = memoir.body
                         tag = memoir.tag
+                        highlightColor = memoir.highlightColor
                         moodEmoji = memoir.moodEmoji
                         moodLabel = memoir.moodLabel
                         isPinned = memoir.isPinned
@@ -72,6 +75,13 @@ class DeskViewModel @Inject constructor(
             }
         } else {
             lastSavedState = title to body
+        }
+    }
+
+    fun onHighlightColorChange(newColor: Long) {
+        if (highlightColor != newColor) {
+            highlightColor = newColor
+            isDirty = true
         }
     }
 
@@ -150,6 +160,7 @@ class DeskViewModel @Inject constructor(
                     title = title,
                     body = body,
                     tag = tag,
+                    highlightColor = highlightColor,
                     moodEmoji = moodEmoji,
                     moodLabel = moodLabel,
                     isPinned = isPinned,

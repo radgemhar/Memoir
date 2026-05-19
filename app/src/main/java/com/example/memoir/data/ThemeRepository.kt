@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,7 @@ class ThemeRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode")
+    private val FONT_SIZE_INDEX = intPreferencesKey("font_size_index")
 
     val isDarkMode: Flow<Boolean> = context.dataStore.data
         .catch { exception ->
@@ -35,9 +37,27 @@ class ThemeRepository @Inject constructor(
             preferences[IS_DARK_MODE] ?: false
         }
 
+    val fontSizeOption: Flow<FontSizeOption> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            FontSizeOption.fromIndex(preferences[FONT_SIZE_INDEX] ?: FontSizeOption.default.ordinal)
+        }
+
     suspend fun setDarkMode(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[IS_DARK_MODE] = enabled
+        }
+    }
+
+    suspend fun setFontSizeOption(option: FontSizeOption) {
+        context.dataStore.edit { preferences ->
+            preferences[FONT_SIZE_INDEX] = option.ordinal
         }
     }
 }

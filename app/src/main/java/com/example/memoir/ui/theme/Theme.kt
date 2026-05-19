@@ -2,7 +2,6 @@ package com.example.memoir.ui.theme
 
 import android.app.Activity
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -18,33 +17,42 @@ import androidx.core.view.WindowCompat
 private val DarkColorScheme = darkColorScheme(
     primary = DarkPrimary,
     secondary = DarkSecondary,
-    tertiary = GoldMuted,
+    tertiary = DarkSecondary,
     background = DarkBackground,
     surface = DarkSurface,
     onPrimary = DarkBackground,
-    onSecondary = DarkOnSurface,
+    onSecondary = DarkBackground,
     onBackground = DarkOnSurface,
     onSurface = DarkOnSurface,
-    surfaceVariant = DarkSurfaceVariant
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkSecondary,
+    primaryContainer = DarkSurfaceVariant,
+    onPrimaryContainer = DarkOnSurface,
+    outline = DarkOutline
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = LightPrimary,
     secondary = LightSecondary,
-    tertiary = GoldMuted,
+    tertiary = LightSecondary,
     background = LightBackground,
     surface = LightSurface,
     onPrimary = LightSurface,
-    onSecondary = LightOnSurface,
+    onSecondary = LightSurface,
     onBackground = LightOnSurface,
     onSurface = LightOnSurface,
-    surfaceVariant = CreamSoft
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightSecondary,
+    primaryContainer = LightSurfaceVariant,
+    onPrimaryContainer = LightOnSurface,
+    outline = LightOutline
 )
 
 @Composable
 fun MemoirTheme(
     darkTheme: Boolean = false,
-    // Disable dynamic color to maintain the "Memoir" brand's elegant identity
+    fontScale: Float = 1.0f,
+    // Disable dynamic color so the app stays strictly light/dark grayscale.
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -61,13 +69,17 @@ fun MemoirTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            window.navigationBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = memoirTypography(fontScale),
         content = content
     )
 }

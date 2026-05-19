@@ -13,9 +13,14 @@ class Converters {
     fun toTag(name: String): MemoirTag = MemoirTag.valueOf(name)
 }
 
-@Database(entities = [Memoir::class, Milestone::class], version = 5, exportSchema = false)
+@Database(
+    entities = [Memoir::class, MemoirFolder::class, Milestone::class],
+    version = 7,
+    exportSchema = false
+)
 @TypeConverters(Converters::class)
 abstract class MemoirDatabase : RoomDatabase() {
     abstract fun memoirDao(): MemoirDao
+    abstract fun memoirFolderDao(): MemoirFolderDao
     abstract fun milestoneDao(): MilestoneDao
 }

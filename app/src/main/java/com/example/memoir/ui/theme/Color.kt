@@ -2,35 +2,27 @@ package com.example.memoir.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Elegant Midnight & Cream Palette
-val MidnightDeep = Color(0xFF0F172A)    // Deeper Slate/Midnight
-val MidnightMuted = Color(0xFF1E293B)   // Classic Midnight
-val CreamSoft = Color(0xFFFDFCF0)      // Soft Vintage Cream
-val GoldMuted = Color(0xFFC5A059)      // Sophisticated Muted Gold
-val SlateLight = Color(0xFF94A3B8)     // Soft Blue-Gray
-
-// Light Mode: Narrative/Manuscript Feel
-val LightBackground = Color(0xFFF8F9FA) // Paper-like White
+// Grayscale light theme
+val LightBackground = Color(0xFFF7F7F8)
 val LightSurface = Color(0xFFFFFFFF)
-val LightPrimary = MidnightDeep
-val LightSecondary = GoldMuted
-val LightOnSurface = MidnightDeep
+val LightSurfaceVariant = Color(0xFFE9EAEC)
+val LightPrimary = Color(0xFF111111)
+val LightSecondary = Color(0xFF62656D)
+val LightOnSurface = Color(0xFF18181B)
+val LightOutline = Color(0xFFD1D5DB)
 
-// Dark Mode: Nocturnal/Deep Reflection
-val DarkBackground = Color(0xFF0A0A0B)  // Near-black Charcoal
-val DarkSurface = Color(0xFF121214)     // Slightly lighter Charcoal for elevation
-val DarkPrimary = Color(0xFFE2E8F0)     // Off-white/Silver for better contrast
-val DarkSecondary = GoldMuted
-val DarkOnSurface = Color(0xFFF1F5F9)
-val DarkSurfaceVariant = Color(0xFF1A1A1C) // For inputs/cards
+// Grayscale dark theme
+val DarkBackground = Color(0xFF050505)
+val DarkSurface = Color(0xFF111113)
+val DarkSurfaceVariant = Color(0xFF242428)
+val DarkPrimary = Color(0xFFF8F8F8)
+val DarkSecondary = Color(0xFFA1A1AA)
+val DarkOnSurface = Color(0xFFEDEDEF)
+val DarkOutline = Color(0xFF3F3F46)
 
-// Tag Colors (Refined for Memoir)
-val TagPlain = Color(0xFF64748B)
-val TagIdea = Color(0xFFD97706)         // Richer Amber
-val TagTask = Color(0xFF0891B2)         // Deep Cyan
-val TagMemory = Color(0xFF7C3AED)       // Royal Violet
-val TagUrgent = Color(0xFFDC2626)       // Crimson
-
-// Accent Glow
-val LightPinnedGlow = GoldMuted
-val DarkPinnedGlow = GoldMuted
+// Tag accents stay grayscale so the app remains strictly dark/light.
+val TagPlain = Color(0xFF9CA3AF)
+val TagIdea = Color(0xFF737373)
+val TagTask = Color(0xFF525252)
+val TagMemory = Color(0xFFA3A3A3)
+val TagUrgent = Color(0xFF3F3F46)

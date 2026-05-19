@@ -4,16 +4,18 @@ import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,8 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.example.memoir.data.Memoir
-import com.example.memoir.data.MemoirTag
 import com.example.memoir.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -41,13 +43,31 @@ fun ChronicleScreen(
     modifier: Modifier = Modifier
 ) {
     val memoirs by viewModel.memoirs.collectAsState()
-    val currentFilter by viewModel.filter.collectAsState()
+    val folders by viewModel.folders.collectAsState()
+    val selectedFolder by viewModel.selectedFolder.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var showNewFolderDialog by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    LaunchedEffect(isRefreshing) {
+        if (isRefreshing) {
+            delay(550)
+            isRefreshing = false
+        }
+    }
+
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            viewModel.refresh()
+            isRefreshing = true
+        },
+        modifier = modifier.fillMaxSize()
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
         val focusRequester = remember { FocusRequester() }
         
         TextField(
@@ -77,10 +97,12 @@ fun ChronicleScreen(
             singleLine = true
         )
 
-        ChronicleFilterChips(
-            selectedFilter = currentFilter,
-            onFilterSelected = viewModel::setFilter,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        FolderSelector(
+            folders = folders,
+            selectedFolder = selectedFolder,
+            onFolderSelected = viewModel::setSelectedFolder,
+            onCreateFolder = { showNewFolderDialog = true },
+            modifier = Modifier.padding(vertical = 10.dp)
         )
 
         Box(modifier = Modifier.weight(1f)) {
@@ -102,14 +124,14 @@ fun ChronicleScreen(
                             when (dismissState.currentValue) {
                                 SwipeToDismissBoxValue.EndToStart -> {
                                     viewModel.preserveMemoir(memoir)
-                                    Toast.makeText(context, "Memoir preserved", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Memoir archived", Toast.LENGTH_SHORT).show()
                                     dismissState.reset()
                                 }
                                 SwipeToDismissBoxValue.StartToEnd -> {
                                     viewModel.discardMemoir(memoir) { deletedMemoir ->
                                         scope.launch {
                                             val result = snackbarHostState.showSnackbar(
-                                                message = "Memoir discarded",
+                                                message = "Memoir deleted",
                                                 actionLabel = "Undo",
                                                 duration = SnackbarDuration.Short
                                             )
@@ -129,16 +151,20 @@ fun ChronicleScreen(
                             content = {
                                 MemoirCard(
                                     memoir = memoir,
+                                    folders = folders,
                                     onClick = { onNavigateToDesk(memoir.id) },
                                     onLongClick = {
                                         viewModel.togglePin(memoir) {
                                             Toast.makeText(context, "Max 5 memoirs pinned", Toast.LENGTH_SHORT).show()
                                         }
                                     },
+                                    onMoveToFolder = { folderName ->
+                                        viewModel.moveMemoirToFolder(memoir, folderName)
+                                    },
                                     onPreserve = { viewModel.preserveMemoir(memoir) },
                                     onDiscard = {
                                          viewModel.discardMemoir(memoir) { }
-                                         Toast.makeText(context, "Memoir discarded", Toast.LENGTH_SHORT).show()
+                                         Toast.makeText(context, "Memoir deleted", Toast.LENGTH_SHORT).show()
                                     }
                                 )
                             }
@@ -148,6 +174,17 @@ fun ChronicleScreen(
             }
             SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
         }
+        }
+    }
+
+    if (showNewFolderDialog) {
+        NewFolderDialog(
+            onDismiss = { showNewFolderDialog = false },
+            onConfirm = { name ->
+                viewModel.createFolder(name)
+                showNewFolderDialog = false
+            }
+        )
     }
 }
 
@@ -155,8 +192,8 @@ fun ChronicleScreen(
 fun SwipeBackground(dismissState: SwipeToDismissBoxState) {
     val color by animateColorAsState(
         when (dismissState.targetValue) {
-            SwipeToDismissBoxValue.StartToEnd -> Color(0xFFFB7185)
-            SwipeToDismissBoxValue.EndToStart -> Color(0xFF1E293B)
+            SwipeToDismissBoxValue.StartToEnd -> Color(0xFF525252)
+            SwipeToDismissBoxValue.EndToStart -> Color(0xFF27272A)
             else -> Color.Transparent
         }, label = "swipe_color"
     )
@@ -186,31 +223,34 @@ fun SwipeBackground(dismissState: SwipeToDismissBoxState) {
 }
 
 @Composable
-fun ChronicleFilterChips(
-    selectedFilter: ChronicleFilter,
-    onFilterSelected: (ChronicleFilter) -> Unit,
+fun FolderSelector(
+    folders: List<String>,
+    selectedFolder: String,
+    onFolderSelected: (String) -> Unit,
+    onCreateFolder: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    LazyRow(
         modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        ChronicleFilter.entries.forEach { filter ->
+        items(folders, key = { it }) { folder ->
             FilterChip(
-                selected = selectedFilter == filter,
-                onClick = { onFilterSelected(filter) },
-                label = { 
-                    val label = when(filter) {
-                        ChronicleFilter.ALL -> "All"
-                        ChronicleFilter.ACTIVE -> "Active"
-                        ChronicleFilter.ARCHIVED -> "Preserved"
-                    }
-                    Text(label) 
-                },
+                selected = selectedFolder == folder,
+                onClick = { onFolderSelected(folder) },
+                label = { Text(folder) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                 )
+            )
+        }
+        item {
+            AssistChip(
+                onClick = onCreateFolder,
+                label = { Text("New folder") },
+                leadingIcon = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) }
             )
         }
     }
@@ -220,25 +260,22 @@ fun ChronicleFilterChips(
 @Composable
 fun MemoirCard(
     memoir: Memoir,
+    folders: List<String> = emptyList(),
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    onMoveToFolder: (String) -> Unit = {},
     onPreserve: () -> Unit,
     onDiscard: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val tagColor = when (memoir.tag) {
-        MemoirTag.PLAIN -> TagPlain
-        MemoirTag.IDEA -> TagIdea
-        MemoirTag.TASK -> TagTask
-        MemoirTag.MEMORY -> TagMemory
-        MemoirTag.URGENT -> TagUrgent
-    }
+    val highlightColor = Color(memoir.highlightColor)
 
     val isNew = System.currentTimeMillis() - memoir.createdAt < 24 * 60 * 60 * 1000
     val sdf = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
     val formattedDate = remember(memoir.createdAt) { sdf.format(Date(memoir.createdAt)) }
 
     var showMenu by remember { mutableStateOf(false) }
+    var showFolderDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = modifier
@@ -251,7 +288,7 @@ fun MemoirCard(
                 if (memoir.isPinned) {
                     Modifier.border(
                         width = 1.dp,
-                        color = if (isSystemInDarkTheme()) DarkPinnedGlow else LightPinnedGlow,
+                        color = MaterialTheme.colorScheme.outline,
                         shape = RoundedCornerShape(12.dp)
                     )
                 } else Modifier
@@ -280,8 +317,8 @@ fun MemoirCard(
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(6.dp)
-                    .background(tagColor)
+                    .width(if (memoir.highlightColor != 0L) 6.dp else 0.dp)
+                    .background(highlightColor)
             )
 
             Column(
@@ -311,7 +348,7 @@ fun MemoirCard(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
-                                    .background(LightPrimary)
+                                    .background(MaterialTheme.colorScheme.primary)
                             )
                         }
                     }
@@ -335,10 +372,21 @@ fun MemoirCard(
                             }
                             DropdownMenu(
                                 expanded = showMenu,
-                                onDismissRequest = { showMenu = false }
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                             ) {
+                                if (folders.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("Move to folder") }, colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface, leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                                        onClick = {
+                                            showMenu = false
+                                            showFolderDialog = true
+                                        },
+                                        leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) }
+                                    )
+                                }
                                 DropdownMenuItem(
-                                    text = { Text("Preserve") },
+                                    text = { Text("Archive") }, colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface, leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant),
                                     onClick = { 
                                         onPreserve()
                                         showMenu = false 
@@ -346,7 +394,7 @@ fun MemoirCard(
                                     leadingIcon = { Icon(Icons.Default.Archive, contentDescription = null) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Discard") },
+                                    text = { Text("Delete") }, colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onSurface, leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant),
                                     onClick = { 
                                         onDiscard()
                                         showMenu = false 
@@ -378,7 +426,7 @@ fun MemoirCard(
                     Text(
                         text = formattedDate,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
                     if (memoir.moodEmoji != null) {
@@ -387,9 +435,10 @@ fun MemoirCard(
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         ) {
                             Text(
-                                text = memoir.moodEmoji,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                fontSize = 14.sp
+                                text = if (!memoir.moodLabel.isNullOrBlank()) "${memoir.moodEmoji}  ${memoir.moodLabel}" else memoir.moodEmoji!!,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.labelMedium
                             )
                         }
                     }
@@ -397,6 +446,95 @@ fun MemoirCard(
             }
         }
     }
+
+    if (showFolderDialog) {
+        MoveToFolderDialog(
+            folders = folders,
+            currentFolder = memoir.folderName,
+            onDismiss = { showFolderDialog = false },
+            onSelect = { folderName ->
+                onMoveToFolder(folderName)
+                showFolderDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun NewFolderDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        title = { Text("New folder") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it.take(32) },
+                label = { Text("Folder name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(name) },
+                enabled = name.trim().isNotBlank()
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun MoveToFolderDialog(
+    folders: List<String>,
+    currentFolder: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        title = { Text("Move to folder") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                folders.forEach { folder ->
+                    ListItem(
+                        headlineContent = { Text(folder) },
+                        trailingContent = {
+                            if (folder == currentFolder) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onSelect(folder) }
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
@@ -411,7 +549,7 @@ fun EmptyChronicle(
         Text(
             text = if (isRecall) "No matching reflections found" else "Your chronicle is empty",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.secondary
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

@@ -2,6 +2,7 @@ package com.example.memoir.ui.theme
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.memoir.data.FontSizeOption
 import com.example.memoir.data.ThemeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,9 +23,22 @@ class ThemeViewModel @Inject constructor(
             initialValue = false
         )
 
+    val fontSizeOption: StateFlow<FontSizeOption> = repository.fontSizeOption
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = FontSizeOption.default
+        )
+
     fun setDarkMode(enabled: Boolean) {
         viewModelScope.launch {
             repository.setDarkMode(enabled)
+        }
+    }
+
+    fun setFontSizeOption(option: FontSizeOption) {
+        viewModelScope.launch {
+            repository.setFontSizeOption(option)
         }
     }
 }
