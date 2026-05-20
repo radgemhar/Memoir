@@ -17,14 +17,11 @@ Memoir is a personal journaling and milestone tracking app for Android — basic
 
 ## APK Installation Instructions
 
-Follow these simple steps to install **`Memoir.apk`** on any Android device:
+Follow these simple steps to install **[Memoir_v1.0.apk](https://github.com/radgemhar/Memoir/raw/main/Memoir_v1.0.apk)** on any Android device:
 
-### Step 1: Transfer the APK to your Device
-1. Locate the **`Memoir.apk`** file in the root of the project folder.
-2. Copy the APK file to your phone using one of these methods:
-   - Connect your phone to your computer via USB and transfer the file.
-   - Upload the APK to Google Drive, then download it on your phone.
-   - Send the file to yourself via an email attachment or messaging app (e.g., Discord, Telegram).
+### Step 1: Download the APK
+1. Click the link above or click here to **[Download Memoir_v1.0.apk](https://github.com/radgemhar/Memoir/raw/main/Memoir_v1.0.apk)**.
+2. Locate the file in your phone's **Downloads** folder.
 
 ### Step 2: Enable Unknown Sources (If prompted)
 Modern Android systems protect you from unofficial apps. When you open the APK for the first time, you may see a prompt.
