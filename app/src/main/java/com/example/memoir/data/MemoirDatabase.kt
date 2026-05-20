@@ -15,7 +15,7 @@ class Converters {
 
 @Database(
     entities = [Memoir::class, MemoirFolder::class, Milestone::class],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -293,7 +293,7 @@ fun MemoirCard(
     modifier: Modifier = Modifier
 ) {
     val highlightColor = Color(memoir.highlightColor)
-    val sdf = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault()) }
     val formattedDate = remember(memoir.createdAt) { sdf.format(Date(memoir.createdAt)) }
 
     var showMenu by remember { mutableStateOf(false) }

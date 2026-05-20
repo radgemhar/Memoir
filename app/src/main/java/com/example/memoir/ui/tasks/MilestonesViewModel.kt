@@ -18,9 +18,21 @@ import javax.inject.Inject
 
 enum class MilestoneFilter(val label: String) {
     ALL("All"),
-    ACTIVE("Active"),
-    COMPLETED("Done")
+    TODO("To Do"),
+    ACCOMPLISHED("Accomplished")
 }
+
+data class MilestoneWithTasks(
+    val milestone: Milestone,
+    val tasks: List<Milestone> = emptyList()
+)
+
+data class TaskItemInput(
+    val id: String = UUID.randomUUID().toString(),
+    val text: String = "",
+    val isCompleted: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis()
+)
 
 @HiltViewModel
 class MilestonesViewModel @Inject constructor(
@@ -35,21 +47,35 @@ class MilestonesViewModel @Inject constructor(
 
     private val _refreshRequests = MutableStateFlow(0)
 
+    private val _showAddDialog = MutableStateFlow(false)
+    val showAddDialog: StateFlow<Boolean> = _showAddDialog
+
+    private val _editingMilestone = MutableStateFlow<MilestoneWithTasks?>(null)
+    val editingMilestone: StateFlow<MilestoneWithTasks?> = _editingMilestone
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val milestones: StateFlow<List<Milestone>> = combine(
+    val milestones: StateFlow<List<MilestoneWithTasks>> = combine(
         _searchQuery,
         _filter,
         _refreshRequests
     ) { query, filter, refreshCount ->
         Triple(query.trim(), filter, refreshCount)
     }.flatMapLatest { (query, filter, _) ->
-        repository.getRootMilestones().map { list ->
-            list.filter { milestone ->
-                val matchesQuery = query.isBlank() || milestone.title.contains(query, ignoreCase = true)
+        repository.getAllMilestones().map { allList ->
+            val rootMilestones = allList.filter { it.parentId == null }
+            val childrenMap = allList.filter { it.parentId != null }.groupBy { it.parentId }
+
+            rootMilestones.map { root ->
+                val children = (childrenMap[root.id] ?: emptyList()).sortedBy { it.createdAt }
+                MilestoneWithTasks(root, children)
+            }.filter { item ->
+                val matchesQuery = query.isBlank() ||
+                        item.milestone.title.contains(query, ignoreCase = true) ||
+                        item.tasks.any { it.title.contains(query, ignoreCase = true) }
                 val matchesFilter = when (filter) {
                     MilestoneFilter.ALL -> true
-                    MilestoneFilter.ACTIVE -> !milestone.isCompleted
-                    MilestoneFilter.COMPLETED -> milestone.isCompleted
+                    MilestoneFilter.TODO -> !item.milestone.isCompleted
+                    MilestoneFilter.ACCOMPLISHED -> item.milestone.isCompleted
                 }
                 matchesQuery && matchesFilter
             }
@@ -73,6 +99,22 @@ class MilestonesViewModel @Inject constructor(
         _refreshRequests.value += 1
     }
 
+    fun openAddMilestone() {
+        _showAddDialog.value = true
+    }
+
+    fun closeAddMilestone() {
+        _showAddDialog.value = false
+    }
+
+    fun openEditMilestone(milestone: MilestoneWithTasks) {
+        _editingMilestone.value = milestone
+    }
+
+    fun closeEditMilestone() {
+        _editingMilestone.value = null
+    }
+
     fun toggleMilestone(milestone: Milestone) {
         viewModelScope.launch {
             repository.toggleMilestoneCompletion(milestone)
@@ -88,20 +130,78 @@ class MilestonesViewModel @Inject constructor(
     fun saveMilestone(
         id: String?,
         title: String,
-        isCompleted: Boolean,
+        items: List<TaskItemInput>,
+        deletedItemIds: List<String>,
         createdAt: Long
     ) {
-        if (title.isBlank()) return
+        val validItems = items.filter { it.text.isNotBlank() }
+        if (title.isBlank() && validItems.isEmpty()) return
         viewModelScope.launch {
-            repository.addMilestone(
-                Milestone(
-                    id = id ?: UUID.randomUUID().toString(),
-                    title = title.trim(),
-                    isCompleted = isCompleted,
-                    parentId = null,
-                    createdAt = createdAt
+            if (title.isNotBlank()) {
+                val parentId = id ?: UUID.randomUUID().toString()
+                val allCompleted = validItems.isNotEmpty() && validItems.all { it.isCompleted }
+
+                // Upsert parent
+                repository.addMilestone(
+                    Milestone(
+                        id = parentId,
+                        title = title.trim(),
+                        isCompleted = allCompleted,
+                        parentId = null,
+                        createdAt = createdAt
+                    )
                 )
-            )
+
+                // Upsert children
+                validItems.forEach { item ->
+                    repository.addMilestone(
+                        Milestone(
+                            id = item.id,
+                            title = item.text.trim(),
+                            isCompleted = item.isCompleted,
+                            parentId = parentId,
+                            createdAt = item.createdAt
+                        )
+                    )
+                }
+
+                // Delete removed children
+                deletedItemIds.forEach { childId ->
+                    repository.getMilestoneById(childId)?.let { child ->
+                        repository.deleteMilestone(child)
+                    }
+                }
+            } else {
+                // Save each item as a single independent root milestone
+                validItems.forEach { item ->
+                    repository.addMilestone(
+                        Milestone(
+                            id = item.id,
+                            title = item.text.trim(),
+                            isCompleted = item.isCompleted,
+                            parentId = null,
+                            createdAt = item.createdAt
+                        )
+                    )
+                }
+
+                // If editing a parent milestone and removed title, delete parent milestone
+                if (id != null) {
+                    repository.getMilestoneById(id)?.let { parent ->
+                        repository.deleteMilestone(parent)
+                    }
+                }
+
+                // Delete removed children
+                deletedItemIds.forEach { childId ->
+                    repository.getMilestoneById(childId)?.let { child ->
+                        repository.deleteMilestone(child)
+                    }
+                }
+            }
+
+            closeAddMilestone()
+            closeEditMilestone()
         }
     }
 }

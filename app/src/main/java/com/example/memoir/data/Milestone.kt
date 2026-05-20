@@ -1,5 +1,6 @@
 package com.example.memoir.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -23,5 +24,7 @@ data class Milestone(
     val title: String,
     val isCompleted: Boolean = false,
     val parentId: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "'All'")
+    val folderName: String = DEFAULT_FOLDER_NAME
 )

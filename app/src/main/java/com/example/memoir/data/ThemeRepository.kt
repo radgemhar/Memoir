@@ -24,6 +24,7 @@ class ThemeRepository @Inject constructor(
 ) {
     private val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode")
     private val FONT_SIZE_INDEX = intPreferencesKey("font_size_index")
+    private val IS_OVERLAY_ENABLED = booleanPreferencesKey("is_overlay_enabled")
 
     val isDarkMode: Flow<Boolean> = context.dataStore.data
         .catch { exception ->
@@ -49,6 +50,18 @@ class ThemeRepository @Inject constructor(
             FontSizeOption.fromIndex(preferences[FONT_SIZE_INDEX] ?: FontSizeOption.default.ordinal)
         }
 
+    val isOverlayEnabled: Flow<Boolean> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[IS_OVERLAY_ENABLED] ?: false
+        }
+
     suspend fun setDarkMode(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[IS_DARK_MODE] = enabled
@@ -58,6 +71,12 @@ class ThemeRepository @Inject constructor(
     suspend fun setFontSizeOption(option: FontSizeOption) {
         context.dataStore.edit { preferences ->
             preferences[FONT_SIZE_INDEX] = option.ordinal
+        }
+    }
+
+    suspend fun setOverlayEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[IS_OVERLAY_ENABLED] = enabled
         }
     }
 }

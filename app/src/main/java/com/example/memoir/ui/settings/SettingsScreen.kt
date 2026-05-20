@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -56,8 +57,10 @@ import kotlin.math.roundToInt
 fun SettingsScreen(
     isDarkMode: Boolean,
     fontSizeOption: FontSizeOption,
+    isOverlayEnabled: Boolean,
     onDarkModeChange: (Boolean) -> Unit,
     onFontSizeChange: (FontSizeOption) -> Unit,
+    onOverlayChange: (Boolean) -> Unit,
     onArchiveClick: () -> Unit,
     onRecentlyDeletedClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -120,6 +123,35 @@ fun SettingsScreen(
                 PlainThemeToggle(
                     checked = isDarkMode,
                     onCheckedChange = onDarkModeChange
+                )
+            }
+        }
+
+        SettingsPanel {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Layers,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Quick Action Overlay",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Swipe edge handle from anywhere to add an entry",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                PlainThemeToggle(
+                    checked = isOverlayEnabled,
+                    onCheckedChange = onOverlayChange
                 )
             }
         }

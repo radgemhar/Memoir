@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -35,6 +36,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -69,21 +71,43 @@ import com.example.memoir.ui.navigation.Route
 import com.example.memoir.ui.settings.SettingsScreen
 import com.example.memoir.ui.folders.FoldersScreen
 import com.example.memoir.ui.tasks.MilestonesScreen
+import com.example.memoir.ui.tasks.MilestonesViewModel
 import com.example.memoir.ui.theme.MemoirTheme
 import com.example.memoir.ui.theme.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlin.math.abs
+import androidx.activity.compose.BackHandler
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.viewModels
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.os.Build
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.example.memoir.overlay.OverlayService
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val themeViewModel: ThemeViewModel by viewModels()
+    private val navigationEvents = kotlinx.coroutines.flow.MutableSharedFlow<Route>(replay = 1, extraBufferCapacity = 1)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (intent?.getBooleanExtra("EXTRA_OPEN_DESK", false) == true) {
+            intent?.removeExtra("EXTRA_OPEN_DESK")
+            navigationEvents.tryEmit(Route.Desk(id = null, isMilestone = false))
+        }
+
         setContent {
-            val themeViewModel: ThemeViewModel = viewModel()
             val isDarkMode by themeViewModel.isDarkMode.collectAsStateWithLifecycle()
             val fontSizeOption by themeViewModel.fontSizeOption.collectAsStateWithLifecycle()
+            val isOverlayEnabled by themeViewModel.isOverlayEnabled.collectAsStateWithLifecycle()
 
             MemoirTheme(
                 darkTheme = isDarkMode,
@@ -99,7 +123,7 @@ class MainActivity : ComponentActivity() {
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background),
+                            .background(if (isDarkMode) MaterialTheme.colorScheme.background else Color.White),
                         contentAlignment = androidx.compose.ui.Alignment.Center
                     ) {
                         Icon(
@@ -116,6 +140,16 @@ class MainActivity : ComponentActivity() {
                 val backStack = remember { mutableStateListOf<Route>(Route.Memoirs) }
                 val currentRoute = backStack.lastOrNull()
                 var navigationMotion by remember { mutableStateOf(NavigationMotion.Instant) }
+
+                LaunchedEffect(Unit) {
+                    navigationEvents.collect { route ->
+                        navigationMotion = NavigationMotion.Slide
+                        if (backStack.lastOrNull() != route) {
+                            backStack.add(route)
+                        }
+                        navigationEvents.resetReplayCache()
+                    }
+                }
 
                 val popBack = {
                     if (backStack.size > 1) {
@@ -134,8 +168,20 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (!isLoading) {
-                NavDisplay(
-                    backStack = backStack,
+                    val context = LocalContext.current
+                    var lastBackPressTime by remember { mutableStateOf(0L) }
+                    BackHandler(enabled = backStack.size == 1) {
+                        val currentTime = System.currentTimeMillis()
+                        if (currentTime - lastBackPressTime < 2000) {
+                            (context as? android.app.Activity)?.finish()
+                        } else {
+                            lastBackPressTime = currentTime
+                            Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    NavDisplay(
+                        backStack = backStack,
                     modifier = Modifier.fillMaxSize(),
                     onBack = popBack,
                     transitionSpec = {
@@ -229,6 +275,7 @@ class MainActivity : ComponentActivity() {
                             }
 
                             is Route.Milestones -> NavEntry(key, metadata = key.motionMetadata()) {
+                                val milestonesViewModel: MilestonesViewModel = viewModel()
                                 Scaffold(
                                     modifier = Modifier.topLevelSwipeNavigation(
                                         currentRoute = currentRoute,
@@ -254,8 +301,7 @@ class MainActivity : ComponentActivity() {
                                     floatingActionButton = {
                                         FloatingActionButton(
                                             onClick = {
-                                                navigationMotion = NavigationMotion.Slide
-                                                backStack.add(Route.Desk(id = null, isMilestone = true))
+                                                milestonesViewModel.openAddMilestone()
                                             },
                                             containerColor = MaterialTheme.colorScheme.primary,
                                             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -265,7 +311,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 ) { innerPadding ->
                                     MilestonesScreen(
-                                        viewModel = viewModel(),
+                                        viewModel = milestonesViewModel,
                                         onNavigateToDesk = { id, isMilestone ->
                                             navigationMotion = NavigationMotion.Slide
                                             backStack.add(Route.Desk(id = id, isMilestone = isMilestone))
@@ -311,8 +357,32 @@ class MainActivity : ComponentActivity() {
                                     SettingsScreen(
                                         isDarkMode = isDarkMode,
                                         fontSizeOption = fontSizeOption,
+                                        isOverlayEnabled = isOverlayEnabled,
                                         onDarkModeChange = themeViewModel::setDarkMode,
                                         onFontSizeChange = themeViewModel::setFontSizeOption,
+                                        onOverlayChange = { enabled ->
+                                            if (enabled) {
+                                                themeViewModel.setOverlayEnabled(true)
+                                                if (Settings.canDrawOverlays(context)) {
+                                                    val serviceIntent = Intent(context, OverlayService::class.java)
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                                        context.startForegroundService(serviceIntent)
+                                                    } else {
+                                                        context.startService(serviceIntent)
+                                                    }
+                                                } else {
+                                                    val intent = Intent(
+                                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                        Uri.parse("package:${context.packageName}")
+                                                    )
+                                                    context.startActivity(intent)
+                                                }
+                                            } else {
+                                                themeViewModel.setOverlayEnabled(false)
+                                                val serviceIntent = Intent(context, OverlayService::class.java)
+                                                context.stopService(serviceIntent)
+                                            }
+                                        },
                                         onArchiveClick = {
                                             navigationMotion = NavigationMotion.Slide
                                             backStack.add(Route.Archive)
@@ -419,6 +489,68 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("EXTRA_OPEN_DESK", false)) {
+            intent.removeExtra("EXTRA_OPEN_DESK")
+            navigationEvents.tryEmit(Route.Desk(id = null, isMilestone = false))
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val isEnabled = themeViewModel.isOverlayEnabled.value
+        if (isEnabled) {
+            if (Settings.canDrawOverlays(this)) {
+                syncOverlayService(true)
+            } else {
+                themeViewModel.setOverlayEnabled(false)
+                syncOverlayService(false)
+            }
+        } else {
+            syncOverlayService(false)
+        }
+        sendOverlayControlIntent(OverlayService.ACTION_HIDE_OVERLAY)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        sendOverlayControlIntent(OverlayService.ACTION_SHOW_OVERLAY)
+    }
+
+    private fun sendOverlayControlIntent(action: String) {
+        if (themeViewModel.isOverlayEnabled.value && Settings.canDrawOverlays(this)) {
+            val intent = Intent(this, OverlayService::class.java).apply {
+                this.action = action
+            }
+            startService(intent)
+        }
+    }
+
+    private fun syncOverlayService(isEnabled: Boolean) {
+        if (isEnabled) {
+            if (Settings.canDrawOverlays(this)) {
+                val serviceIntent = Intent(this, OverlayService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(serviceIntent)
+                } else {
+                    startService(serviceIntent)
+                }
+            } else {
+                themeViewModel.setOverlayEnabled(false)
+                stopOverlayService()
+            }
+        } else {
+            stopOverlayService()
+        }
+    }
+
+    private fun stopOverlayService() {
+        val serviceIntent = Intent(this, OverlayService::class.java)
+        stopService(serviceIntent)
     }
 }
 

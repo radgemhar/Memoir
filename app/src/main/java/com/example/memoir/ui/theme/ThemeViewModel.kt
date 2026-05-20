@@ -30,6 +30,13 @@ class ThemeViewModel @Inject constructor(
             initialValue = FontSizeOption.default
         )
 
+    val isOverlayEnabled: StateFlow<Boolean> = repository.isOverlayEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     fun setDarkMode(enabled: Boolean) {
         viewModelScope.launch {
             repository.setDarkMode(enabled)
@@ -39,6 +46,12 @@ class ThemeViewModel @Inject constructor(
     fun setFontSizeOption(option: FontSizeOption) {
         viewModelScope.launch {
             repository.setFontSizeOption(option)
+        }
+    }
+
+    fun setOverlayEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setOverlayEnabled(enabled)
         }
     }
 }

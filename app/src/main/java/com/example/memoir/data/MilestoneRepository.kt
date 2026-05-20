@@ -18,6 +18,15 @@ class MilestoneRepository @Inject constructor(
 
     suspend fun deleteMilestone(milestone: Milestone) = milestoneDao.deleteMilestone(milestone)
 
+    suspend fun moveToFolder(milestone: Milestone, folderName: String) {
+        val updatedMilestone = milestone.copy(folderName = folderName)
+        milestoneDao.updateMilestone(updatedMilestone)
+        val children = milestoneDao.getSubMilestonesSync(milestone.id)
+        for (child in children) {
+            milestoneDao.updateMilestone(child.copy(folderName = folderName))
+        }
+    }
+
     suspend fun toggleMilestoneCompletion(milestone: Milestone) {
         val newStatus = !milestone.isCompleted
         updateMilestoneWithHierarchy(milestone.copy(isCompleted = newStatus))
