@@ -1,6 +1,6 @@
 # Memoir 📝
 
-Memoir is a private journaling, goal tracking, and milestone organization application for Android. It enables users to record memories, organize folders, track major milestones, and quickly compose new entries from anywhere on their device using a swipeable edge handle overlay.
+Memoir is a personal journaling and milestone tracking app for Android — basically like a notes app, but with a lot more meaning behind it. The app name is derived from the actual word "memoir", which comes from the French *mémoire*, meaning "memory" or "record", tracing back to the Latin *memoria*. A memoir is a factual, narrative account of a writer's personal life and experiences — and that's exactly what this app is built for: not just writing random notes, but capturing your real memories, tracking your goals, and building a story out of your everyday life.
 
 ---
 
