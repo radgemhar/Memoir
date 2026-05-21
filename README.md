@@ -7,7 +7,7 @@ Memoir is a personal journaling and milestone tracking app for Android — basic
 ## Key Features
 
 - **Chronicle Entries**: Write and edit diary/journal entries chronologically, preserving your thoughts and memory timelines.
-- **Milestones Tracking**: Set goals, log accomplishments, monitor task progress with a dynamic progress bar, and link important milestones directly to specific journal entries.
+- **Milestones Tracking**: Set goals, log accomplishments, monitor task progress.
 - **Quick Action Overlay**: Swipe a high-visibility edge handle from the upper-right corner of your screen—even while inside other apps—to open Memoir directly to the entry composer.
 - **Smart Toggle Lifecycle**: Turn on the quick entry shortcut in Settings, and the app will automatically prompt you for system permission and manage the overlay visibility dynamically (strictly hiding it when you're in the app, and showing it when you leave).
 - **Personalized Customization**: Fully responsive Dark/Light themes, scalable font sizes, and folder categorization.
