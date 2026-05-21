@@ -675,7 +675,8 @@ fun SketchDialog(
 ) {
     val paths = remember { mutableStateListOf<ColoredPath>() }
     val currentPath = remember { mutableStateOf<List<Offset>>(emptyList()) }
-    var currentDrawColor by remember { mutableStateOf(Color.Black) }
+    val isDark = isSystemInDarkTheme()
+    var currentDrawColor by remember { mutableStateOf(if (isDark) Color.White else Color.Black) }
     val context = LocalContext.current
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     
@@ -690,15 +691,20 @@ fun SketchDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val drawingColors = listOf(
-                        Color.Black,
-                        Color.White,
-                        Color.Red,
-                        Color(0xFF3B82F6),
-                        Color(0xFF10B981),
-                        Color(0xFFF59E0B),
-                        Color(0xFF8B5CF6)
-                    )
+                    val drawingColors = remember(isDark) {
+                        val colors = mutableListOf<Color>()
+                        if (!isDark) colors.add(Color.Black)
+                        if (isDark) colors.add(Color.White)
+                        
+                        colors.addAll(listOf(
+                            Color.Red,
+                            Color(0xFF3B82F6), // Blue
+                            Color(0xFF10B981), // Green
+                            Color(0xFFF59E0B), // Orange
+                            Color(0xFF8B5CF6)  // Violet
+                        ))
+                        colors
+                    }
                     drawingColors.forEach { color ->
                         Box(
                             modifier = Modifier
@@ -1397,14 +1403,17 @@ fun EditHandle(
     backgroundColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isLightBg = backgroundColor == Color.White || backgroundColor == Color(0xFFF8F8F8)
+    val iconTint = if (isLightBg) Color.Black else Color.White
+    val borderColor = if (isLightBg) Color.Black.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.8f)
+
     Box(
         modifier = modifier
             .size(28.dp)
             .background(backgroundColor, CircleShape)
             .border(
                 1.dp,
-                if (isDark) Color.Black.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.8f),
+                borderColor,
                 CircleShape
             ),
         contentAlignment = Alignment.Center
@@ -1412,7 +1421,7 @@ fun EditHandle(
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
-            tint = if (isDark) Color.Black else Color.White,
+            tint = iconTint,
             modifier = Modifier.size(16.dp)
         )
     }
@@ -1714,7 +1723,7 @@ fun BodyEditorWithInlineImages(
                                     EditHandle(
                                         imageVector = Icons.Default.Flip,
                                         contentDescription = "Flip Media",
-                                        backgroundColor = MaterialTheme.colorScheme.primary
+                                        backgroundColor = Color.Black
                                     )
                                 }
 
@@ -1767,7 +1776,7 @@ fun BodyEditorWithInlineImages(
                                     EditHandle(
                                         imageVector = Icons.Default.OpenInFull,
                                         contentDescription = "Resize Media",
-                                        backgroundColor = MaterialTheme.colorScheme.primary,
+                                        backgroundColor = Color.Black,
                                         modifier = Modifier.rotate(90f)
                                     )
                                 }
@@ -1802,7 +1811,7 @@ fun BodyEditorWithInlineImages(
                                     EditHandle(
                                         imageVector = Icons.Default.Refresh,
                                         contentDescription = "Rotate Media",
-                                        backgroundColor = MaterialTheme.colorScheme.primary
+                                        backgroundColor = Color.Black
                                     )
                                 }
                             }

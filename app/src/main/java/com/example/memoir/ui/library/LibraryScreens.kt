@@ -34,6 +34,8 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import com.example.memoir.ui.editor.parseRichText
+import com.example.memoir.ui.editor.stripImageTags
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -334,7 +336,7 @@ private fun LibraryMemoirCard(
                 )
             }
             Text(
-                text = memoir.body,
+                text = parseRichText(stripImageTags(memoir.body)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
                 maxLines = 2,
